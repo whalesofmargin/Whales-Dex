@@ -203,44 +203,4 @@
         function logout() { xumm.logout(); location.reload(); }
     </script>
 </body>
-</html>            const urlParams = new URLSearchParams(window.location.search);
-            const payloadId = urlParams.get('xummPayloadUUID');
-
-            if (payloadId) {
-                const result = await xumm.payload.get(payloadId);
-                if (result && result.response && result.response.account) {
-                    handleSuccess(result.response.account);
-                }
-            } else {
-                xumm.user.account.then(account => {
-                    if (account) handleSuccess(account);
-                });
-            }
-        });
-
-        async function doSignIn() {
-            // On GitHub, authorize() handles mobile redirects automatically and correctly!
-            xumm.authorize().catch(err => alert("Sign-in Error: " + err.message));
-        }
-
-        function handleSuccess(account) {
-            document.getElementById('accountaddress').innerText = account;
-            document.getElementById('signinbutton').style.display = 'none';
-            document.getElementById('logoutbutton').style.display = 'inline-block';
-            document.getElementById('userHashDisplay').innerText = "Connected: " + account.substring(0,10) + "...";
-        }
-
-        function logout() {
-            xumm.logout();
-            location.reload();
-        }
-
-        function openPage(pageId) {
-            document.querySelectorAll('.page-frame').forEach(f => f.classList.remove('active'));
-            document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            document.getElementById('nav-' + pageId).classList.add('active');
-        }
-    </script>
-</body>
-</html>
+</html>            
