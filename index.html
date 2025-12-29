@@ -188,9 +188,19 @@
         }
 
         async function handleSuccess(account) {
-    userLoggedIn = true;
-    document.getElementById('accountaddress').innerText = account;
+      document.getElementById('accountaddress').innerText = account;
+            const msgUint8 = new TextEncoder().encode(account); 
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     
+    const display = document.getElementById('userHashDisplay');
+    if (display) display.innerText = hash.substring(0, 24);
+      document.getElementById('signinbutton').style.display = 'none';
+      document.getElementById('logoutbutton').style.display = 'inline-block';
+      document.getElementById('userHashDisplay').innerText = "Connected: " + account.substring(0,10) + "...";
+      // This allows the other tabs to work
+      userLoggedIn = true;
     // 1. Fetch real data from the ledger
     const tokens = await getLedgerBalances(account);
     const tableBody = document.getElementById("portfolioTableBody");
@@ -205,7 +215,7 @@
     tokens.forEach(token => {
         // We convert hex currency codes (like 584C53...) to readable names if needed
         let currencyName = token.currency.length > 3 ? "Custom Token" : token.currency;
-        
+        // make "custom token" a variable that will tell the token name.
         tableBody.innerHTML += `
             <tr>
                 <td>${currencyName}</td>
@@ -215,14 +225,17 @@
             </tr>
         `;
     });
-}
+}    
+        xumm.on("logout", () => {
+        document.getElementById('accountaddress').innerText = '...';
+        location.reload();}
         function openPage(pageId) {
             if ((pageId === 'swap' || pageId === 'portfolio') && !userLoggedIn) {
                 document.getElementById('signupModal').style.display = 'flex';
                 return;
             }
             document.querySelectorAll('.page-frame').forEach(f => f.classList.remove('active'));
-            document.querySelectorAll('.nav-links button').forEach(b => b.classList.add('active'));
+            document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
             document.getElementById('nav-' + pageId).classList.add('active');
         }
