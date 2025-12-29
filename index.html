@@ -148,94 +148,73 @@
 
     <script src="https://xumm.app/assets/cdn/xumm.min.js"></script>
     <script>
-// Add as many as you want. Currency can be 3 letters or a 40-char HEX string.
-const FEATURED_TOKENS = [
-    { name: "Gold-RWA", currency: "GLD", issuer: "rYourGoldIssuerAddress..." },
-    { name: "Utility-Node", currency: "NOD", issuer: "rYourNodeIssuerAddress..." },
-    { name: "BTC-wrapped", currency: "BTC", issuer: "rBitstampAddress..." }
-];
-        
         const xumm = new Xumm('c5faed1c-cd38-4f99-ab56-73432c940bb2');
         let userLoggedIn = false;
 
-xumm.on("ready", async () => {
-    // 1. Define a robust UI sync function
-    const syncUI = async () => {
+ xumm.on("ready", async () => {
+    // 1. Function to refresh the UI
+    const checkSession = async () => {
         const account = await xumm.user.account;
         if (account) {
-            // Force the UI to catch up with the SDK's state
             handleSuccess(account);
-        } else {
-            // Ensure we are in logged-out state visually
-            document.getElementById('signinbutton').style.display = 'inline-block';
-            document.getElementById('logoutbutton').style.display = 'none';
         }
     };
 
-    // 2. Run sync immediately
-    await syncUI();
+    // 2. Run check immediately on load
+    checkSession();
 
-    // 3. Handle the mobile return payload
+    // 3. FORCE REFRESH when the user returns to the tab (The Mobile Fix)
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            checkSession();
+        }
+    });
+
+    // 4. Handle the URL Payload (The "Direct Return" from Xaman)
     const urlParams = new URLSearchParams(window.location.search);
     const pId = urlParams.get('xummPayloadUUID');
     if (pId) {
         const res = await xumm.payload.get(pId);
         if (res?.response?.account) {
             handleSuccess(res.response.account);
+            // Clean the URL so the back button works nicely
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }
-    
-    // 4. LISTEN FOR FOCUS (The fix for "Address is there but Logout is gone")
-    // When you switch back from Xaman or "Desktop view", this triggers
-    window.addEventListener('focus', syncUI);
 });
 
         async function doSignIn() {
             xumm.authorize().catch(err => alert("Sign-in Error: " + err.message));
         }
 
- async function handleSuccess(account) {
+        async function handleSuccess(account) {
     userLoggedIn = true;
     document.getElementById('accountaddress').innerText = account;
-
-    // 1. Fetch ALL trustlines from the ledger
-    const ledgerLines = await getLedgerBalances(account);
+    
+    // 1. Fetch real data from the ledger
+    const tokens = await getLedgerBalances(account);
     const tableBody = document.getElementById("portfolioTableBody");
+    
+    // 2. Clear the table and inject real rows
     tableBody.innerHTML = ""; 
 
-    // 2. Loop through your FEATURED tokens
-    FEATURED_TOKENS.forEach(featured => {
-        // Check if the user has a matching trustline
-        const userToken = ledgerLines.find(line => 
-            line.account === featured.issuer && 
-            (line.currency === featured.currency || line.currency === asciiToHex(featured.currency))
-        );
+    if (tokens.length === 0) {
+        tableBody.innerHTML = "<tr><td colspan='4'>No tokens found in this vault.</td></tr>";
+    }
 
-        const balance = userToken ? parseFloat(userToken.balance).toFixed(2) : "0.00";
-        const status = userToken ? "Verified" : "No Trustline";
-        const statusColor = userToken ? "#00ff00" : "#ff4444";
-
-        // 3. Inject the row
+    tokens.forEach(token => {
+        // We convert hex currency codes (like 584C53...) to readable names if needed
+        let currencyName = token.currency.length > 3 ? "Custom Token" : token.currency;
+        
         tableBody.innerHTML += `
             <tr>
-                <td>${featured.name}</td>
-                <td>${balance}</td>
+                <td>${currencyName}</td>
+                <td>${parseFloat(token.balance).toFixed(2)}</td>
                 <td>--</td> 
-                <td style="color: ${statusColor};">${status}</td>
+                <td style="color: #00ff00;">On-Chain</td>
             </tr>
         `;
     });
-}
-
-// Helper: Some tokens use HEX codes, this helps match them
-function asciiToHex(str) {
-    if (str.length > 3) return str; // Already hex
-    let hex = "";
-    for (let n = 0; n < str.length; n++) {
-        hex += Number(str.charCodeAt(n)).toString(16).toUpperCase();
-    }
-    return hex.padEnd(40, "0");
 }
         function openPage(pageId) {
             if ((pageId === 'swap' || pageId === 'portfolio') && !userLoggedIn) {
@@ -266,23 +245,6 @@ function asciiToHex(str) {
     const data = await response.json();
     return data.result.lines; // This is the list of tokens
 }
-        async function getLedgerBalances(walletAddress) {
-    try {
-        const response = await fetch("https://xrplcluster.com", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                method: "account_lines",
-                params: [{ account: walletAddress, ledger_index: "validated" }]
-            })
-        });
-        const data = await response.json();
-        return data.result.lines || [];
-    } catch (e) {
-        console.error("Ledger Fetch Error:", e);
-        return [];
-    }
-}
     </script>
 </body>
-</html>            
+</html>     
