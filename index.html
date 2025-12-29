@@ -158,36 +158,37 @@ const FEATURED_TOKENS = [
         const xumm = new Xumm('c5faed1c-cd38-4f99-ab56-73432c940bb2');
         let userLoggedIn = false;
 
- xumm.on("ready", async () => {
-    // 1. Function to refresh the UI
-    const checkSession = async () => {
+xumm.on("ready", async () => {
+    // 1. Define a robust UI sync function
+    const syncUI = async () => {
         const account = await xumm.user.account;
         if (account) {
+            // Force the UI to catch up with the SDK's state
             handleSuccess(account);
+        } else {
+            // Ensure we are in logged-out state visually
+            document.getElementById('signinbutton').style.display = 'inline-block';
+            document.getElementById('logoutbutton').style.display = 'none';
         }
     };
 
-    // 2. Run check immediately on load
-    checkSession();
+    // 2. Run sync immediately
+    await syncUI();
 
-    // 3. FORCE REFRESH when the user returns to the tab (The Mobile Fix)
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-            checkSession();
-        }
-    });
-
-    // 4. Handle the URL Payload (The "Direct Return" from Xaman)
+    // 3. Handle the mobile return payload
     const urlParams = new URLSearchParams(window.location.search);
     const pId = urlParams.get('xummPayloadUUID');
     if (pId) {
         const res = await xumm.payload.get(pId);
         if (res?.response?.account) {
             handleSuccess(res.response.account);
-            // Clean the URL so the back button works nicely
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }
+    
+    // 4. LISTEN FOR FOCUS (The fix for "Address is there but Logout is gone")
+    // When you switch back from Xaman or "Desktop view", this triggers
+    window.addEventListener('focus', syncUI);
 });
 
         async function doSignIn() {
