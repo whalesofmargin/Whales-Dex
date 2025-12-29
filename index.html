@@ -83,9 +83,10 @@
     <nav>
         <div class="logo">Whales of Margin</div>
         <div class="nav-links">
-            <button id="nav-home" class="active" onclick="openPage('home')">Home</button>
-            <button id="nav-swap" onclick="openPage('swap')">Swap</button>
-            <button id="nav-portfolio" onclick="openPage('portfolio')">Portfolio</button>
+
+            <button class="active" onclick="openPage('home')">Home</button>
+            <button onclick="openPage('swap')">Swap</button>
+            <button onclick="openPage('portfolio')">Portfolio</button>
             <button id="logoutbutton" onclick="xumm.logout()">Logout</button>
         </div>
     </nav>
@@ -189,16 +190,11 @@
 
         async function handleSuccess(account) {
       document.getElementById('accountaddress').innerText = account;
-            const msgUint8 = new TextEncoder().encode(account); 
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    const display = document.getElementById('userHashDisplay');
+
     if (display) display.innerText = hash.substring(0, 24);
       document.getElementById('signinbutton').style.display = 'none';
       document.getElementById('logoutbutton').style.display = 'inline-block';
-      document.getElementById('userHashDisplay').innerText = "Connected: " + account.substring(0,10) + "...";
+      document.getElementById('userHashDisplay').innerText = "Connected: " + account.substring(0,10);
       // This allows the other tabs to work
       userLoggedIn = true;
     // 1. Fetch real data from the ledger
