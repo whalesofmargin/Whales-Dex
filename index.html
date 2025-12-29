@@ -86,7 +86,7 @@
             <button id="nav-home" class="active" onclick="openPage('home')">Home</button>
             <button id="nav-swap" onclick="openPage('swap')">Swap</button>
             <button id="nav-portfolio" onclick="openPage('portfolio')">Portfolio</button>
-            <button id="logoutbutton" onclick="logout()">Logout</button>
+            <button id="logoutbutton" onclick="xumm.logout()">Logout</button>
         </div>
     </nav>
 
@@ -228,7 +228,7 @@
         }
 
         function closeModal() { document.getElementById('signupModal').style.display = 'none'; }
-        function logout() { xumm.logout(); location.reload(); }
+       
         async function getLedgerBalances(walletAddress) {
     const response = await fetch("https://xrplcluster.com", {
         method: "POST",
