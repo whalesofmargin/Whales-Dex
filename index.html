@@ -148,6 +148,20 @@
     </div>
 <script src="https://xumm.app/assets/cdn/xumm.min.js"></script>
 <script>
+    const APPROVED_TOKENS = [
+    { 
+        name: "Gold-RWA", 
+        currency: "GLD", 
+        issuer: "rP9jPyP5kyvFRb6ZiLghm5nmdyV1M16ML7", // Example Issuer
+        icon: "https://cryptologos.cc/logos/gold-gold-logo.png" 
+    },
+    { 
+        name: "Utility-Node", 
+        currency: "NOD", 
+        issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", // Example Issuer
+        icon: "https://example.com/node-icon.png" 
+    }
+];
     const xumm = new Xumm('c5faed1c-cd38-4f99-ab56-73432c940bb2');
     let userLoggedIn = false;
 
@@ -202,20 +216,40 @@
                 return;
             }
 
-            tokens.forEach(token => {
-                let currencyName = token.currency.length > 3 ? "Custom Token" : token.currency;
-                tableBody.innerHTML += `
-                    <tr>
-                        <td>${currencyName}</td>
-                        <td>${parseFloat(token.balance).toFixed(2)}</td>
-                        <td>--</td> 
-                        <td style="color: #00ff00;">On-Chain</td>
-                    </tr>
-                `;
-            });
+APPROVED_TOKENS.forEach(approved => {
+    // 1. Check if the user's ledger data matches your approved token
+    const userMatch = ledgerBalances.find(b => 
+        b.account === approved.issuer && 
+        b.currency === approved.currency
+    );
+
+    // 2. Determine the display values
+    const balance = userMatch ? parseFloat(userMatch.balance).toFixed(2) : "0.00";
+    
+    // 3. Create the Marker (The Checkmark)
+    let statusMarker = '';
+    if (userMatch) {
+        statusMarker = '<span style="color: #00ff00; font-weight: bold;">✓ Owned</span>';
+    } else {
+        // Optional: A link that helps them add the token
+        statusMarker = '<button class="aquatic-btn" style="padding: 5px 10px; font-size: 0.8em;">+ Add Trust</button>';
+    }
+
+    // 4. Inject into Table
+    tableBody.innerHTML += `
+        <tr>
+            <td>${approved.name}</td>
+            <td>${balance}</td>
+            <td>--</td> 
+            <td>${statusMarker}</td>
+        </tr>
+    `;
+});
+        populateTokenList(tokens);
         } catch (e) {
             console.error("Ledger error:", e);
         }
+        
     }
 
     xumm.on("logout", () => {
@@ -261,6 +295,30 @@
             return [];
         }
     }
+    function populateTokenList(userBalances = []) {
+    const container = document.getElementById('portfolioTableBody');
+    // container.innerHTML = "";  <-- REMOVE OR COMMENT THIS OUT
+    
+    APPROVED_TOKENS.forEach(approved => {
+        // Find if the user owns the approved token
+        const match = userBalances.find(b => 
+            b.account === approved.issuer && // XRPL uses 'account' for the issuer address
+            b.currency === approved.currency
+        );
+
+        const balance = match ? parseFloat(match.balance).toFixed(2) : "0.00";
+        const status = match ? "Verified" : "Add Trustline";
+
+        container.innerHTML += `
+            <tr style="background: rgba(0, 255, 255, 0.05);"> 
+                <td><img src="${approved.icon}" width="20" style="vertical-align:middle;"> ${approved.name}</td>
+                <td>${balance}</td>
+                <td>--</td>
+                <td>${status}</td>
+            </tr>
+        `;
+    });
+}
 </script>
 </body>
 </html>     
