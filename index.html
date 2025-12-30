@@ -192,65 +192,50 @@
         xumm.authorize().catch(err => alert("Sign-in Error: " + err.message));
     }
 
-    async function handleSuccess(account) {
-        userLoggedIn = true;
-        
-        // 1. Update UI Elements
-        document.getElementById('accountaddress').innerText = account;
-        document.getElementById('signinbutton').style.display = 'none';
-        document.getElementById('logoutbutton').style.display = 'inline-block';
-        
-        const hashDisp = document.getElementById('userHashDisplay');
-        if (hashDisp) hashDisp.innerText = "Connected: " + account.substring(0, 10);
-
-        // 2. Fetch and Display Tokens
-        try {
-            const tokens = await getLedgerBalances(account);
-            const tableBody = document.getElementById("portfolioTableBody");
-            if (!tableBody) return;
-
-            tableBody.innerHTML = ""; 
-
-            if (!tokens || tokens.length === 0) {
-                tableBody.innerHTML = "<tr><td colspan='4'>No tokens found in this vault.</td></tr>";
-                return;
-            }
-
-APPROVED_TOKENS.forEach(approved => {
-    // 1. Check if the user's ledger data matches your approved token
-    const userMatch = ledgerBalances.find(b => 
-        b.account === approved.issuer && 
-        b.currency === approved.currency
-    );
-
-    // 2. Determine the display values
-    const balance = userMatch ? parseFloat(userMatch.balance).toFixed(2) : "0.00";
+async function handleSuccess(account) {
+    userLoggedIn = true;
     
-    // 3. Create the Marker (The Checkmark)
-    let statusMarker = '';
-    if (userMatch) {
-        statusMarker = '<span style="color: #00ff00; font-weight: bold;">✓ Owned</span>';
-    } else {
-        // Optional: A link that helps them add the token
-        statusMarker = '<button class="aquatic-btn" style="padding: 5px 10px; font-size: 0.8em;">+ Add Trust</button>';
-    }
+    // 1. Update UI Elements
+    document.getElementById('accountaddress').innerText = account;
+    document.getElementById('signinbutton').style.display = 'none';
+    document.getElementById('logoutbutton').style.display = 'inline-block';
+    
+    const hashDisp = document.getElementById('userHashDisplay');
+    if (hashDisp) hashDisp.innerText = "Connected: " + account.substring(0, 10);
 
-    // 4. Inject into Table
-    tableBody.innerHTML += `
-        <tr>
-            <td>${approved.name}</td>
-            <td>${balance}</td>
-            <td>--</td> 
-            <td>${statusMarker}</td>
-        </tr>
-    `;
-});
-        populateTokenList(tokens);
-        } catch (e) {
-            console.error("Ledger error:", e);
+    try {
+        // 2. Fetch the actual tokens from the ledger
+        const tokens = await getLedgerBalances(account);
+        const tableBody = document.getElementById("portfolioTableBody");
+        if (!tableBody) return;
+
+        tableBody.innerHTML = ""; // Clear "Loading..."
+
+        // 3. First: Show all random tokens found in the wallet
+        if (tokens && tokens.length > 0) {
+            tokens.forEach(token => {
+                let currencyName = token.currency.length > 3 ? "Custom Token" : token.currency;
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${currencyName}</td>
+                        <td>${parseFloat(token.balance).toFixed(2)}</td>
+                        <td>--</td> 
+                        <td style="color: #00ff00;">On-Chain</td>
+                    </tr>
+                `;
+            });
+        } else {
+            tableBody.innerHTML = "<tr><td colspan='4'>No organic tokens found.</td></tr>";
         }
-        
+
+        // 4. Second: Append the "Approved" artifacts (even if balance is 0)
+        populateTokenList(tokens);
+
+    } catch (e) {
+        console.error("Ledger error:", e);
+        document.getElementById("portfolioTableBody").innerHTML = "<tr><td colspan='4'>Error loading vault data.</td></tr>";
     }
+}
 
     xumm.on("logout", () => {
         userLoggedIn = false;
