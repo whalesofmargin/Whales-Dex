@@ -149,7 +149,7 @@
 <script src="https://xumm.app/assets/cdn/xumm.min.js"></script>
 <script>
     const APPROVED_TOKENS = [
-{ 
+    { 
         name: "XOGE", 
         currency: "586F676500000000000000000000000000000000", 
         issuer: "rJMtvf5B3GbuFMrqybh5wYVXEH4QE8VyU1", // Example Issuer
@@ -216,7 +216,6 @@
         icon: "https://uas.xrpscan.com/x/healthaicoin?ttl=24h&fallback=https://xrpscan.com/static/media/xrpl-symbol-black.cc259dd1.svg&k=4" 
     }
 ];
-    
     const xumm = new Xumm('c5faed1c-cd38-4f99-ab56-73432c940bb2');
     let userLoggedIn = false;
 
@@ -296,35 +295,6 @@ async function handleSuccess(account) {
         userLoggedIn = false;
         location.reload();
     });
-    async function setTrustline(symbol, issuer) {
-    // 1. Define the Transaction "Recipe"
-    const payload = {
-        "txjson": {
-            "TransactionType": "TrustSet",
-            "Account": xumm.user.account, // The logged-in user
-            "LimitAmount": {
-                "currency": symbol,
-                "issuer": issuer,
-                "value": "1000000000" // A high limit so they never have to adjust it
-            }
-        }
-    };
-
-    try {
-        // 2. Send the payload to Xaman
-        const request = await xumm.payload.create(payload);
-        
-        // 3. Open the request for the user
-        if (request.next.always) {
-            // Mobile: This triggers a "Deep Link" to open Xaman app
-            // Desktop: This opens a new tab with a QR code
-            window.open(request.next.always, '_blank');
-        }
-    } catch (err) {
-        console.error("Payload error:", err);
-        alert("Transaction failed. Are you connected to Xaman?");
-    }
-}
 
     function openPage(pageId) {
         if ((pageId === 'swap' || pageId === 'portfolio') && !userLoggedIn) {
@@ -368,38 +338,27 @@ async function handleSuccess(account) {
     const container = document.getElementById('portfolioTableBody');
     // container.innerHTML = "";  <-- REMOVE OR COMMENT THIS OUT
     
-// 1. Check if the user's ledger data matches your approved token
-    const userMatch = ledgerBalances.find(b => 
-        b.account === approved.issuer && 
-        b.currency === approved.currency
-    );
+    APPROVED_TOKENS.forEach(approved => {
+        // Find if the user owns the approved token
+        const match = userBalances.find(b => 
+            b.account === approved.issuer && // XRPL uses 'account' for the issuer address
+            b.currency === approved.currency
+        );
 
-    // 2. Determine the display values
-    const balance = userMatch ? parseFloat(userMatch.balance).toFixed(2) : "0.00";
-    
-    // 3. Create the Marker (The Checkmark)
-// Inside populateTokenList loop
-let statusMarker = '';
-if (match) {
-    statusMarker = '<span style="color: #00ff00; font-weight: bold;">✓ Owned</span>';
-} else {
-    // We pass the specific token's currency and issuer into the function
-    statusMarker = `<button class="aquatic-btn" 
-                    onclick="setTrustline('${approved.currency}', '${approved.issuer}')" 
-                    style="padding: 5px 10px; font-size: 0.8em;">+ Add Trust</button>`;
+        const balance = match ? parseFloat(match.balance).toFixed(2) : "0.00";
+        const status = match ? "Verified" : "Add Trustline";
+
+        container.innerHTML += `
+            <tr style="background: rgba(0, 255, 255, 0.05);"> 
+                <td><img src="${approved.icon}" width="20" style="vertical-align:middle;"> ${approved.name}</td>
+                <td>${balance}</td>
+                <td>--</td>
+                <td>${status}</td>
+            </tr>
+        `;
+    });
 }
-
-    // 4. Inject into Table
-    tableBody.innerHTML += `
-        <tr>
-            <td>${approved.name}</td>
-            <td>${balance}</td>
-            <td>--</td> 
-            <td>${statusMarker}</td>
-        </tr>
-    `;
-});
-    }
 </script>
 </body>
 </html>     
+  
