@@ -129,13 +129,14 @@
         <div class="card">
             <h2>Your Deep Sea Vault</h2>
             <p>Hashed Identity: <span id="userHashDisplay" style="color: var(--accent-color);">[Not Connected]</span></p>
-            <table id="portfolioTable">
-                <thead>
-                    <tr><th>Asset</th><th>Balance</th><th>Value (XRP)</th><th>Status</th></tr>
-                </thead>
-                <tbody id="portfolioTableBody">
-                    </tbody>
-            </table>
+            
+<table>
+        <thead>
+            <tr><th>Asset</th><th>Currency</th><th>Issuer</th><th>Status</th></tr>
+        </thead>
+        <tbody id="homeTokenTable">
+            </tbody>
+    </table>
         </div>
     </div>
 
@@ -218,8 +219,28 @@
 ];
     const xumm = new Xumm('c5faed1c-cd38-4f99-ab56-73432c940bb2');
     let userLoggedIn = false;
+function populateHomeDirectory() {
+    const tableBody = document.getElementById("homeTokenTable");
+    if (!tableBody) return;
 
+    tableBody.innerHTML = ""; // Clear placeholders
+
+    APPROVED_TOKENS.forEach(token => {
+        tableBody.innerHTML += `
+            <tr>
+                <td>
+                    <img src="${token.icon}" width="20" style="vertical-align:middle; margin-right:10px;">
+                    <strong>${token.name}</strong>
+                </td>
+                <td>${token.currency}</td>
+                <td style="font-family: monospace; font-size: 0.8em;">${token.issuer.substring(0, 15)}...</td>
+                <td style="color: var(--accent-color);">Verified Artifact</td>
+            </tr>
+        `;
+    });
+}
     xumm.on("ready", async () => {
+        populateHomeDirectory();
         const checkSession = async () => {
             const account = await xumm.user.account;
             if (account) handleSuccess(account);
