@@ -244,29 +244,48 @@ async function fetchMetadata(url, cardId, serial) {
     if (!card) return;
 
     try {
+        // Try to fetch the data as JSON first
         const response = await fetch(url);
-        if (!response.ok) throw new Error("Metadata unreachable");
-        
-        const metadata = await response.json();
-        
-        // FIX: Use fallbacks for undefined properties
-        let image = formatIpfsUrl(metadata?.image || metadata?.video || "");
-        let name = metadata?.name || `Artifact #${serial}`;
+        const contentType = response.headers.get("content-type");
 
-        card.innerHTML = `
-            <img src="${image}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
-            <span class="nft-name">${name}</span>
-            <button class="aquatic-btn" style="padding: 5px; font-size: 0.7em;" 
-                onclick="window.open('https://bithomp.com/nft/${cardId.replace('nft-','')}')">Ledger View</button>
-        `;
+        if (contentType && contentType.includes("application/json")) {
+            const metadata = await response.json();
+            
+            // Look for the image inside the JSON (common keys: image, animation_url)
+            let imageUri = metadata.image || metadata.animation_url || metadata.video;
+            let finalImage = formatIpfsUrl(imageUri);
+
+            updateNftCard(card, finalImage, metadata.name || `Artifact ${serial}`);
+        } else {
+            // If it's NOT JSON, the URL itself is likely the image (Direct Image NFT)
+            updateNftCard(card, url, `Artifact ${serial}`);
+        }
     } catch (e) {
-        // FIX: If metadata fails, show the ID so the user isn't stuck with "undefined"
-        card.innerHTML = `
-            <div class="nft-thumb" style="display:flex; align-items:center; justify-content:center; background:#111;">?</div>
-            <span class="nft-name">Unknown Artifact</span>
-            <small style="font-size:0.6em; color:gray;">Raw Link: <a href="${url}" target="_blank">View URI</a></small>
-        `;
+        // If fetch fails (CORS error), we use a direct <img> tag fallback
+        // Browsers handle <img> tags differently than fetch()—they bypass most CORS rules!
+        updateNftCard(card, url, `Artifact ${serial}`);
     }
+}
+
+function updateNftCard(card, imageUrl, name) {
+    card.innerHTML = `
+        <img src="${imageUrl}" class="nft-thumb" loading="lazy" 
+             onerror="this.src='https://via.placeholder.com/150?text=Scan+Error'">
+        <span class="nft-name">${name}</span>
+        <button class="aquatic-btn" style="font-size: 0.7em;" 
+                onclick="window.open('https://bithomp.com/nft/${card.id.replace('nft-','')}')">Ledger</button>
+    `;
+}
+    function formatIpfsUrl(uri) {
+    if (!uri) return "";
+
+    // 1. Clean the URI (removes ipfs:// and handles your # replacement)
+    let cidPath = uri.replace(/^ipfs:\/\/?/, "");
+    cidPath = cidPath.split('#').join('%23');
+
+    // 2. We use 'pinata' or 'cloudflare' as they are often faster than the default ipfs.io
+    // You can swap the order of these to see which is faster for your specific NFTs
+    return `https://gateway.pinata.cloud/ipfs/${cidPath}`;
 }
     async function mintNFT() {
     // This is the transaction "recipe" for an NFT purchase/mint
