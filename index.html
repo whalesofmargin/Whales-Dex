@@ -76,6 +76,25 @@
             display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
             background:rgba(0,0,0,0.9); z-index:2000; align-items:center; justify-content:center;
         }
+            .nft-card {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid #1a2a44;
+    transition: 0.3s;
+    text-align: center;
+}
+.nft-card:hover { border-color: var(--accent-color); transform: translateY(-5px); }
+
+.nft-thumb {
+    width: 100%;
+    aspect-ratio: 1/1; /* Keeps them perfectly square */
+    object-fit: cover; /* Crops image to fit without stretching */
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+.nft-name { font-weight: bold; font-size: 0.9em; display: block; }
+.nft-meta { font-size: 0.75em; color: #888; }
     </style>
 </head>
 <body>
@@ -137,7 +156,19 @@
             </table>
         </div>
     </div>
-
+<div id="nftfinder" class="page-frame">
+    <div class="card">
+        <h2>Vault Artifacts</h2>
+        <input type="text" id="nftSearch" placeholder="Search by name or serial..." 
+               style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: 1px solid var(--accent-color); background: #050b14; color: white; ">
+        
+        <div id="nftGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+            
+            <p>Scanning the ledger for artifacts...</p>
+        </div>
+        
+    </div>
+</div>
     <div id="signupModal">
         <div class="card" style="max-width:400px; text-align:center; border: 2px solid var(--accent-color);">
             <h2 style="color:var(--accent-color);">Member Access Required</h2>
@@ -147,6 +178,38 @@
     </div>
 <script src="https://xumm.app/assets/cdn/xumm.min.js"></script>
 <script>
+    async function mintNFT() {
+    // This is the transaction "recipe" for an NFT purchase/mint
+    const payload = {
+        "txjson": {
+            "TransactionType": "NFTokenCreateOffer", 
+            "Account": xumm.user.account,
+            "Amount": "10000000", // 10 XRP in drops (1 million drops = 1 XRP)
+            "NFTokenID": "00080000...", // The ID of the NFT from the cafe
+            "Flags": 1
+        }
+    };
+const mintTime = new Date("2025-12-31T12:00:00Z").getTime();
+
+setInterval(() => {
+    const now = new Date().getTime();
+    const distance = mintTime - now;
+
+    if (distance <= 0) {
+        document.getElementById("mintBtn").disabled = false;
+        document.getElementById("mintBtn").innerText = "MINT NOW";
+    } else {
+        document.getElementById("mintBtn").innerText = "Locked: " + Math.floor(distance / 1000) + "s";
+    }
+}, 1000);
+    // Send the request to the user's phone
+    const request = await xumm.payload.create(payload);
+    
+    if (request.next.always) {
+        // Open Xaman to sign
+        window.open(request.next.always, '_blank');
+    }
+}
     function hexToName(hex) {
     if (!hex || hex.length <= 3) return hex;
     try {
