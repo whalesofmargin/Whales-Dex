@@ -256,27 +256,61 @@ async function searchWalletNFTs() {
 
 async function drillDownToImage(jsonUri, cardId, serial) {
     const card = document.getElementById(cardId);
-    try {
-        const webLink = jsonUri.replace("ipfs://", "https://ipfs.io/ipfs/");
-        
-        // Fetch the JSON metadata
-        const response = await fetch(webLink);
-        if (!response.ok) throw new Error("Gateway Busy");
-        
-        const metadata = await response.json();
-        
-        let imageUri = metadata.image || metadata.video || "";
-        let finalImage = imageUri.replace("ipfs://", "https://ipfs.io/ipfs/");
+    if (!jsonUri) return;
 
-        card.innerHTML = `
-            <img src="${finalImage}" class="nft-thumb" loading="lazy" onerror="this.src='https://via.placeholder.com/150?text=Scan+Metadata'">
-            <span class="nft-name">${metadata.name || 'Artifact #' + serial}</span>
-        `;
+    // Helper to switch gateways
+    const toWeb = (uri, gateway) => {
+        let path = uri.replace(/^ipfs:\/\//, "");
+        return gateway + path;
+    };
+
+    const cloudflare = "https://cloudflare-ipfs.com/ipfs/";
+    const ipfsio = "https://ipfs.io/ipfs/";
+
+    try {
+        // 1. Fetch the Metadata using Cloudflare (fast for JSON)
+        const response = await fetch(toWeb(jsonUri, cloudflare));
+        const metadata = await response.json();
+        let imageUri = metadata.image || metadata.video || "";
+        
+        // 2. Start Pre-loading the image in the background
+        const imgPreloader = new Image();
+        imgPreloader.src = toWeb(imageUri, cloudflare);
+
+        // Success: Image loaded from Cloudflare
+        imgPreloader.onload = () => {
+            card.innerHTML = `
+                <img src="${imgPreloader.src}" class="nft-thumb">
+                <span class="nft-name">${metadata.name || 'Artifact #' + serial}</span>
+            `;
+        };
+
+        // Failure: If Cloudflare fails, retry with IPFS.io automatically
+        imgPreloader.onerror = () => {
+            console.log(`Retrying image for #${serial} via IPFS.io...`);
+            const retryImg = new Image();
+            retryImg.src = toWeb(imageUri, ipfsio);
+
+            retryImg.onload = () => {
+                card.innerHTML = `
+                    <img src="${retryImg.src}" class="nft-thumb">
+                    <span class="nft-name">${metadata.name || 'Artifact #' + serial}</span>
+                `;
+            };
+
+            retryImg.onerror = () => {
+                card.innerHTML = `
+                    <img src="https://via.placeholder.com/150?text=Scan+Error" class="nft-thumb">
+                    <span class="nft-name">Artifact #${serial}</span>
+                `;
+            };
+        };
+
     } catch (e) {
-        // Fallback for direct images or gateway timeouts
-        const fallbackImg = jsonUri.replace("ipfs://", "https://ipfs.io/ipfs/");
+        // Final Fallback: If metadata JSON fails, try to load the URI directly as an image
+        const fallback = toWeb(jsonUri, ipfsio);
         card.innerHTML = `
-            <img src="${fallbackImg}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=No+Preview'">
+            <img src="${fallback}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=Not+Found'">
             <span class="nft-name">Artifact #${serial}</span>
         `;
     }
