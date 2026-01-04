@@ -273,17 +273,7 @@ function updateNftCard(card, imageUrl, name) {
                 onclick="window.open('https://bithomp.com/nft/${card.id.replace('nft-','')}')">Ledger</button>
     `;
 }
-    function formatIpfsUrl(uri) {
-    if (!uri) return "";
-
-    // 1. Clean the URI (removes ipfs:// and handles your # replacement)
-    let cidPath = uri.replace(/^ipfs:\/\/?/, "");
-    cidPath = cidPath.split('#').join('%23');
-
-    // 2. We use 'pinata' or 'cloudflare' as they are often faster than the default ipfs.io
-    // You can swap the order of these to see which is faster for your specific NFTs
-    return `https://gateway.pinata.cloud/ipfs/${cidPath}`;
-}
+   
     async function mintNFT() {
     // This is the transaction "recipe" for an NFT purchase/mint
     const payload = {
@@ -316,19 +306,31 @@ setInterval(() => {
         window.open(request.next.always, '_blank');
     }
 }
-    function hexToName(hex) {
-    if (!hex || hex.length <= 3) return hex;
+// 1. Translates Ledger Hex into a readable IPFS link
+function hexToText(hex) {
+    if (!hex) return "";
     try {
         let str = '';
         for (let i = 0; i < hex.length; i += 2) {
-            let charCode = parseInt(hex.substr(i, 2), 16);
-            if (charCode === 0) break; // End of string padding
-            str += String.fromCharCode(charCode);
+            str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
         }
-        return str.trim();
+        return str;
     } catch (e) {
-        return "Custom Token";
+        console.error("Hex decoding error:", e);
+        return "";
     }
+}
+
+// 2. Cleans up the link so the browser can show the image
+function formatIpfsUrl(uri) {
+    if (!uri) return "";
+    
+    // Remove ipfs:// and handle the # encoding just like your Sheet logic
+    let cleanCID = uri.replace(/^ipfs:\/\/?/, "");
+    cleanCID = cleanCID.split('#').join('%23');
+
+    // Using Pinata or Cloudflare is usually faster for GitHub sites
+    return "https://gateway.pinata.cloud/ipfs/" + cleanCID;
 }
     const APPROVED_TOKENS = [
     { 
