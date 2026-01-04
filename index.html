@@ -247,7 +247,7 @@ async function searchWalletNFTs() {
             await drillDownToImage(decodedUri, cardId, nft.Sequence);
 
             // 3. WAIT an extra 100ms to keep the IPFS gateway happy
-            await delay(100); 
+            await delay(200); 
         }
     } catch (err) {
         grid.innerHTML = "<p>Connection Error.</p>";
