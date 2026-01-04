@@ -265,37 +265,33 @@ async function searchWalletNFTs() {
 
 async function drillDownToImage(decodedUri, cardId, serial) {
     const card = document.getElementById(cardId);
-    if (!decodedUri) return;
-
-    // Use Cloudflare as the primary gateway for speed
-    const toWeb = (uri) => uri.replace(/^ipfs:\/\//, "https://cloudflare-ipfs.com/ipfs/");
+    
+    // Step 3: Create the first web link (The Metadata Link)
+    const metadataWebLink = decodedUri.replace("ipfs://", "https://ipfs.io/ipfs/");
 
     try {
-        // Step A: Fetch JSON Metadata
-        const response = await fetch(toWeb(decodedUri));
-        if (!response.ok) throw new Error();
-        const metadata = await response.json();
+        // Step 4: Fetch the JSON
+        const response = await fetch(metadataWebLink);
+        const json = await response.json();
         
-        // Step B: Get actual image link from JSON
-        const imageUri = metadata.image || metadata.video || "";
-        const finalImage = toWeb(imageUri);
+        // Step 5: Extract the Image (Priority Order)
+        // We skip 'schema' because it's usually just a technical blueprint
+        let rawImageLink = json.image || json.animation_url || json.video || "";
+        
+        // Step 6: Create the final image web link
+        const finalImageUrl = rawImageLink.replace("ipfs://", "https://ipfs.io/ipfs/");
 
-        // Step C: Pre-load image so it doesn't flash
-        const img = new Image();
-        img.src = finalImage;
-        img.onload = () => {
-            card.innerHTML = `
-                <img src="${finalImage}" class="nft-thumb">
-                <span class="nft-name">${metadata.name || 'Artifact #' + serial}</span>
-            `;
-        };
-        img.onerror = () => throwError(card, serial);
-
-    } catch (e) {
-        // Fallback: If metadata fails, try the URI itself as the image
-        const directLink = decodedUri.replace(/^ipfs:\/\//, "https://ipfs.io/ipfs/");
+        // Show it!
         card.innerHTML = `
-            <img src="${directLink}" class="nft-thumb" onerror="this.parentElement.innerHTML='<p>Load Error</p>'">
+            <img src="${finalImageUrl}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=Format+Error'">
+            <span class="nft-name">${json.name || 'Artifact #' + serial}</span>
+        `;
+        
+    } catch (e) {
+        // Fallback: If we can't read the JSON, try to show the first link directly
+        const fallback = decodedUri.replace("ipfs://", "https://ipfs.io/ipfs/");
+        card.innerHTML = `
+            <img src="${fallback}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=Hidden+Artifact'">
             <span class="nft-name">Artifact #${serial}</span>
         `;
     }
