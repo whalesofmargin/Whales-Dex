@@ -248,7 +248,7 @@ async function searchWalletNFTs() {
 
             // 4. The Magic Step: Wait 50ms before asking for the next NFT
             // This prevents the IPFS gateway from blocking your "flood" of requests
-            await delay(75); 
+            await delay(100); 
         }
     } catch (err) {
         grid.innerHTML = "<p>Connection Error.</p>";
