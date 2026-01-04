@@ -147,6 +147,20 @@
     </div>
 <script src="https://xumm.app/assets/cdn/xumm.min.js"></script>
 <script>
+    function hexToName(hex) {
+    if (!hex || hex.length <= 3) return hex;
+    try {
+        let str = '';
+        for (let i = 0; i < hex.length; i += 2) {
+            let charCode = parseInt(hex.substr(i, 2), 16);
+            if (charCode === 0) break; // End of string padding
+            str += String.fromCharCode(charCode);
+        }
+        return str.trim();
+    } catch (e) {
+        return "Custom Token";
+    }
+}
     const APPROVED_TOKENS = [
     { 
         name: "XOGE", 
@@ -158,13 +172,13 @@
         name: "Freedom Phoenix Token", 
         currency: "FPT", 
         issuer: "rBXRBN9gSFE4qL6DGWYHgKCLtoMzUVL5cF", // Example Issuer
-        icon: "https://xrpscan.com/static/media/xrpl-symbol-black.cc259dd1.svg" 
+        icon: "https://s1.xrplmeta.org/icon/8BE01E0146.webp" 
     },
     { 
         name: "NBunnU", 
         currency: "4E42554E4E550000000000000000000000000000", 
         issuer: "rsdDZFHp1GXp1GMacDFne2ekSjjfWmhvKu", // Example Issuer
-        icon: "https://xrpscan.com/static/media/xrpl-symbol-black.cc259dd1.svg" 
+        icon: "https://s1.xrplmeta.org/icon/A3F84903B7.webp" 
     },
     { 
         name: "Xmeme", 
@@ -182,13 +196,13 @@
         name: "Lynx", 
         currency: "244C594E58000000000000000000000000000000", 
         issuer: "rsr8BspVLwDWgrYamEJE3mqZhKozfWLfkv", // Example Issuer
-        icon: "https://xrpscan.com/static/media/xrpl-symbol-black.cc259dd1.svg" 
+        icon: "https://s1.xrplmeta.org/icon/A064B0A41A.webp" 
     },
     { 
         name: "UgA BuGa", 
         currency: "UGA", 
         issuer: "rBFJGmWj6YaabVCxfsjiCM8pfYXs8xFdeC", // Example Issuer
-        icon: "https://xrpscan.com/static/media/xrpl-symbol-black.cc259dd1.svg" 
+        icon: "https://s1.xrplmeta.org/icon/3F77861A34.webp" 
     },
     { 
         name: "X Joy", 
@@ -270,9 +284,10 @@ async function handleSuccess(account) {
     
     // 1. Update UI Elements
     document.getElementById('accountaddress').innerText = account;
+    document.getElementById('accountaddress').style.color = 'var(--hover-color)';
+    document.getElementById('accountaddress').style.textShadow = '0 0 20px var(--accent-color)';
     document.getElementById('signinbutton').style.display = 'none';
     document.getElementById('logoutbutton').style.display = 'inline-block';
-    
     const hashDisp = document.getElementById('userHashDisplay');
     if (hashDisp) hashDisp.innerText = "Connected: " + account.substring(0, 10);
 
@@ -287,7 +302,7 @@ async function handleSuccess(account) {
         // 3. First: Show all random tokens found in the wallet
         if (tokens && tokens.length > 0) {
             tokens.forEach(token => {
-                let currencyName = token.currency.length > 3 ? "Custom Token" : token.currency;
+               let currencyName = hexToName(token.currency);
                 tableBody.innerHTML += `
                     <tr>
                         <td>${currencyName}</td>
