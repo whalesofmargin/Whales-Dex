@@ -227,15 +227,15 @@ async function searchWalletNFTs() {
             grid.innerHTML = "<p>No Artifacts found.</p>";
             return;
         }
+            
+            // Create the card frame
+        grid.innerHTML = ""; // Clear the 'Opening Vault' text
 
-        grid.innerHTML = ""; 
-
-        // 2. Use for...of to allow for 'await delay'
         for (const nft of nfts) {
             const cardId = `nft-${nft.NFTokenID}`;
             const decodedUri = hexToText(nft.URI || "");
             
-            // Create the card frame
+            // 1. Build the card frame (the container)
             grid.innerHTML += `
                 <div class="nft-card" id="${cardId}">
                     <div class="nft-loader-spinner"></div>
@@ -243,11 +243,10 @@ async function searchWalletNFTs() {
                 </div>
             `;
 
-            // 3. Drill down to the image
-            drillDownToImage(decodedUri, cardId, nft.Sequence);
+            // 2. WAIT for the metadata and image to be found before moving to the next
+            await drillDownToImage(decodedUri, cardId, nft.Sequence);
 
-            // 4. The Magic Step: Wait 50ms before asking for the next NFT
-            // This prevents the IPFS gateway from blocking your "flood" of requests
+            // 3. WAIT an extra 100ms to keep the IPFS gateway happy
             await delay(100); 
         }
     } catch (err) {
