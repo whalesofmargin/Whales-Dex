@@ -217,89 +217,53 @@ async function searchWalletNFTs() {
     const grid = document.getElementById('nftGrid');
     
     if (!wallet) return;
-
-    grid.innerHTML = "<p>Scanning Vault for Images...</p>";
+    grid.innerHTML = "<p>Scanning the Vault...</p>";
 
     try {
-        const response = await fetch(`https://api.xrpldata.com/api/v1/xls20-nfts/owner/${wallet}`);
-        const result = await response.json();
-        const nfts = result?.data?.nfts || [];
+        // Using the standard XRPL Cluster
+        const response = await fetch("https://xrplcluster.com", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                method: "account_nfts",
+                params: [{ account: wallet, ledger_index: "validated" }]
+            })
+        });
+
+        const data = await response.json();
+        const nfts = data.result.account_nfts || [];
 
         if (nfts.length === 0) {
-            grid.innerHTML = "<p>No Artifacts found.</p>";
+            grid.innerHTML = "<p>No Artifacts found in this vault.</p>";
             return;
         }
 
-        grid.innerHTML = ""; // Clear loader
+        grid.innerHTML = ""; 
 
-        for (const nft of nfts) {
+        nfts.forEach(nft => {
             const cardId = `nft-${nft.NFTokenID}`;
-            const decodedUri = hexToText(nft.URI);
-            const webLink = formatIpfsUrl(decodedUri);
+            const rawUri = hexToText(nft.URI || "");
+            
+            // FIX: Check both 'nft_serial' (API) and 'Sequence' (Node)
+            const serial = nft.nft_serial || nft.Sequence || "Unknown";
+            
+            // Clean the URI for the browser (Standard IPFS Gateway)
+            const imgUrl = rawUri.replace("ipfs://", "https://ipfs.io/ipfs/");
 
-            // Placeholder card with Serial fix (using nft.nft_serial)
             grid.innerHTML += `
-                <div class="nft-card" id="${cardId}">
-                    <div class="nft-loader-spinner"></div>
-                    <span class="nft-name">Serial: ${nft.nft_serial || "N/A"}</span>
+                <div class="nft-card">
+                    <img src="${imgUrl}" class="nft-thumb" 
+                         onerror="this.src='https://via.placeholder.com/150?text=Scan+Metadata'">
+                    <span class="nft-name">Artifact #${serial}</span>
                 </div>
             `;
-
-            // Now we go get the actual image from the link
-            loadRealImage(webLink, cardId);
-        }
+        });
     } catch (err) {
-        grid.innerHTML = `<p style="color:red;">Connection Error. Please try again.</p>`;
-    }
-}
-    // This replaces fetchMetadata entirely
-async function loadRealImage(url, cardId) {
-    const card = document.getElementById(cardId);
-    if (!card) return;
-
-    try {
-        // 1. Fetch the JSON file (the URI)
-        const response = await fetch(url);
-        
-        // If it's a valid JSON metadata file
-        if (response.ok && response.headers.get("content-type")?.includes("json")) {
-            const data = await response.json();
-            
-            // 2. Extract the actual image link from the JSON
-            let imagePath = data.image || data.video || data.animation_url || url;
-            let finalImage = formatIpfsUrl(imagePath);
-
-            // 3. Update the card with the real Name and Image
-            card.innerHTML = `
-                <img src="${finalImage}" class="nft-thumb" 
-                     onerror="this.src='https://via.placeholder.com/150?text=Image+Not+Found'">
-                <span class="nft-name">${data.name || card.querySelector('.nft-name').innerText}</span>
-            `;
-        } else {
-            // If the URI itself is the image link (Direct Image NFT)
-            card.innerHTML = `
-                <img src="${url}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=Scan+Error'">
-                <span class="nft-name">${card.querySelector('.nft-name').innerText}</span>
-            `;
-        }
-    } catch (e) {
-        // Fallback: If the fetch fails, just try to use the URL as a direct image
-        card.innerHTML = `
-            <img src="${url}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=No+Metadata'">
-            <span class="nft-name">${card.querySelector('.nft-name').innerText}</span>
-        `;
+        grid.innerHTML = "<p>Connection Error. Please check the address.</p>";
     }
 }
 
-function updateNftCard(card, imageUrl, name) {
-    card.innerHTML = `
-        <img src="${imageUrl}" class="nft-thumb" loading="lazy" 
-             onerror="this.src='https://via.placeholder.com/150?text=Scan+Error'">
-        <span class="nft-name">${name}</span>
-        <button class="aquatic-btn" style="font-size: 0.7em;" 
-                onclick="window.open('https://bithomp.com/nft/${card.id.replace('nft-','')}')">Ledger</button>
-    `;
-}
+
    
     async function mintNFT() {
     // This is the transaction "recipe" for an NFT purchase/mint
@@ -336,29 +300,15 @@ setInterval(() => {
 // 1. Translates Ledger Hex into a readable IPFS link
 function hexToText(hex) {
     if (!hex) return "";
-    try {
-        let str = '';
-        for (let i = 0; i < hex.length; i += 2) {
-            str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-        }
-        return str;
-    } catch (e) {
-        console.error("Hex decoding error:", e);
-        return "";
+    let str = '';
+    for (let i = 0; i < hex.length; i += 2) {
+        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
     }
+    return str;
 }
 
 // 2. Cleans up the link so the browser can show the image
-function formatIpfsUrl(uri) {
-    if (!uri) return "";
-    
-    // Remove ipfs:// and handle the # encoding just like your Sheet logic
-    let cleanCID = uri.replace(/^ipfs:\/\/?/, "");
-    cleanCID = cleanCID.split('#').join('%23');
 
-    // Using Pinata or Cloudflare is usually faster for GitHub sites
-    return "https://gateway.pinata.cloud/ipfs/" + cleanCID;
-}
     const APPROVED_TOKENS = [
     { 
         name: "XOGE", 
