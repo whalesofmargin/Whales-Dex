@@ -186,61 +186,57 @@
 <script>
 // 1. The main search function
 async function searchWalletNFTs() {
-    const address = document.getElementById('walletSearchInput').value;
+    const wallet = document.getElementById('walletSearchInput').value;
     const grid = document.getElementById('nftGrid');
-    
-    if (!address.startsWith('r')) {
-        alert("Please enter a valid XRPL address starting with 'r'");
+
+    if (!wallet.startsWith('r')) {
+        alert("Please enter a valid XRPL address.");
         return;
     }
 
-    grid.innerHTML = "<div class='loader'>Scanning the Artifact Vault...</div>";
+    grid.innerHTML = "<p>Scanning the Artifact Vault via XRPData...</p>";
 
     try {
-        // 2. Fetch directly from the ledger cluster (No Google Sheets needed!)
-        const response = await fetch("https://xrplcluster.com", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                method: "account_nfts",
-                params: [{ account: address, ledger_index: "validated" }]
-            })
-        });
-
-        const data = await response.json();
-        const nfts = data.result.account_nfts || [];
-
+        // 1. Fetch from XRPData API (replacing UrlFetchApp)
+        const response = await fetch(`https://api.xrpldata.com/api/v1/xls20-nfts/owner/${wallet}`);
+        const result = await response.json();
+        
+        const nfts = result.data.nfts;
         grid.innerHTML = ""; // Clear loader
 
-        if (nfts.length === 0) {
-            grid.innerHTML = "<p>No Artifacts found in this vault.</p>";
+        if (!nfts || nfts.length === 0) {
+            grid.innerHTML = "<p>No artifacts found in this vault.</p>";
             return;
         }
 
-        // 3. Loop and Build Cards
-        nfts.forEach(nft => {
-            // XRPL URIs are in HEX, we need to decode them to see the IPFS link
-            const decodedURI = hexToString(nft.URI || "");
-            const imageURL = formatIpfsUrl(decodedURI);
+        // 2. Process each NFT (replaces your .map and loops)
+        for (const nft of nfts) {
+            if (nft.URI) {
+                const decodedUri = hexToText(nft.URI);
+                const webLink = formatIpfsUrl(decodedUri);
 
-            grid.innerHTML += `
-                <div class="nft-card">
-                    <img src="${imageURL}" class="nft-thumb" onerror="this.src='placeholder.png'">
-                    <span class="nft-name">Serial: ${nft.nft_serial}</span>
-                    <span class="nft-meta">Taxon: ${nft.NFTokenTaxon}</span>
-                    <button class="aquatic-btn" onclick="window.open('https://bithomp.com/nft/${nft.NFTokenID}')">
-                        Bithomp View
-                    </button>
-                </div>
-            `;
-        });
+                // Create a placeholder card first
+                const cardId = `nft-${nft.NFTokenID}`;
+                grid.innerHTML += `
+                    <div class="nft-card" id="${cardId}">
+                        <div class="nft-loader-spinner"></div>
+                        <span class="nft-name">Artifact ${nft.nft_serial}</span>
+                        <small style="font-size:0.7em; color:gray;">${nft.NFTokenID.substring(0,10)}...</small>
+                    </div>
+                `;
+
+                // 3. "Deep Scan" for metadata (replacing getImageIdFromUrl)
+                fetchMetadata(webLink, cardId);
+            }
+        }
     } catch (err) {
-        grid.innerHTML = "<p>Error connecting to the Artifact Vault.</p>";
+        console.error(err);
+        grid.innerHTML = "<p>Error accessing the Deep Sea Vault.</p>";
     }
 }
 
-// Helper: Convert HEX URI from ledger to readable text
-function hexToString(hex) {
+// Replaces your hexToText Apps Script function
+function hexToText(hex) {
     let str = '';
     for (let i = 0; i < hex.length; i += 2) {
         str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
@@ -248,13 +244,35 @@ function hexToString(hex) {
     return str;
 }
 
-// Helper: Clean up IPFS links (converts ipfs:// to a web link)
-function formatIpfsUrl(uri) {
-    if (uri.startsWith('ipfs://')) {
-        return uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
+// Replaces your getImageIdFromUrl and formatting logic
+async function fetchMetadata(url, cardId) {
+    const card = document.getElementById(cardId);
+    try {
+        // Fetch the JSON metadata file
+        const response = await fetch(url);
+        const metadata = await response.json();
+        
+        // Find the image (handling ipfs:// protocol if present)
+        let image = metadata.image || metadata.video || "";
+        image = formatIpfsUrl(image);
+
+        // Update the card with the real name and image
+        card.innerHTML = `
+            <img src="${image}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
+            <span class="nft-name">${metadata.name || "Unnamed Artifact"}</span>
+            <button class="aquatic-btn" style="padding: 5px; font-size: 0.7em;" 
+                onclick="window.open('https://bithomp.com/nft/${cardId.replace('nft-','')}')">View Ledger</button>
+        `;
+    } catch (e) {
+        // If it's not JSON, just try to show the decoded URI as an image
+        card.innerHTML = `<img src="${url}" class="nft-thumb"><span>Artifact</span>`;
     }
-    return uri;
 }
+
+function formatIpfsUrl(uri) {
+    if (!uri) return "";
+    return uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
+};
     async function mintNFT() {
     // This is the transaction "recipe" for an NFT purchase/mint
     const payload = {
