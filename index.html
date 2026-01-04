@@ -93,8 +93,35 @@
     border-radius: 8px;
     margin-bottom: 10px;
 }
-.nft-name { font-weight: bold; font-size: 0.9em; display: block; }
+.nft-name { 
+    font-weight: bold; 
+    font-size: 0.9em; 
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Adds "..." if the name is too long */
+}
 .nft-meta { font-size: 0.75em; color: #888; }
+        /* Spinner for when the image is still being "scanned" */
+.nft-loader-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(0, 188, 212, 0.2);
+    border-top: 3px solid var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 40px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Make images fade in smoothly once loaded */
+.nft-thumb {
+    animation: fadeIn 0.5s ease-in-out;
+}
     </style>
 </head>
 <body>
@@ -191,20 +218,11 @@ async function searchWalletNFTs() {
     
     if (!wallet) return;
 
-    grid.innerHTML = "<p>Scanning Vault...</p>";
+    grid.innerHTML = "<p>Scanning Vault for Images...</p>";
 
     try {
-        // We use the direct XRPData API that your Google Sheet used
-        const response = await fetch(`https://api.xrpldata.com/api/v1/xls20-nfts/owner/${wallet}`, {
-            method: 'GET',
-            mode: 'cors' // This is the crucial setting for Browsers
-        });
-
-        if (!response.ok) throw new Error("API Response was not OK");
-
+        const response = await fetch(`https://api.xrpldata.com/api/v1/xls20-nfts/owner/${wallet}`);
         const result = await response.json();
-        console.log("Data Received:", result); // Look for this in F12 Console
-
         const nfts = result?.data?.nfts || [];
 
         if (nfts.length === 0) {
@@ -212,55 +230,64 @@ async function searchWalletNFTs() {
             return;
         }
 
-        grid.innerHTML = ""; // Clear the "Scanning" text
+        grid.innerHTML = ""; // Clear loader
 
-        nfts.forEach(nft => {
+        for (const nft of nfts) {
             const cardId = `nft-${nft.NFTokenID}`;
             const decodedUri = hexToText(nft.URI);
-            const finalImage = formatIpfsUrl(decodedUri);
+            const webLink = formatIpfsUrl(decodedUri);
 
+            // Placeholder card with Serial fix (using nft.nft_serial)
             grid.innerHTML += `
                 <div class="nft-card" id="${cardId}">
-                    <img src="${finalImage}" class="nft-thumb" 
-                         onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
-                    <span class="nft-name">Serial: ${nft.nft_serial}</span>
-                    <button class="aquatic-btn" onclick="window.open('https://bithomp.com/nft/${nft.NFTokenID}')">
-                        Bithomp
-                    </button>
+                    <div class="nft-loader-spinner"></div>
+                    <span class="nft-name">Serial: ${nft.nft_serial || "N/A"}</span>
                 </div>
             `;
-        });
 
+            // Now we go get the actual image from the link
+            loadRealImage(webLink, cardId);
+        }
     } catch (err) {
-        console.error("Detailed Error:", err); // This tells us WHY it failed
-        grid.innerHTML = `<p style="color:red;">Connection Error: ${err.message}</p>`;
+        grid.innerHTML = `<p style="color:red;">Connection Error. Please try again.</p>`;
     }
 }
-async function fetchMetadata(url, cardId, serial) {
+    // This replaces fetchMetadata entirely
+async function loadRealImage(url, cardId) {
     const card = document.getElementById(cardId);
     if (!card) return;
 
     try {
-        // Try to fetch the data as JSON first
+        // 1. Fetch the JSON file (the URI)
         const response = await fetch(url);
-        const contentType = response.headers.get("content-type");
-
-        if (contentType && contentType.includes("application/json")) {
-            const metadata = await response.json();
+        
+        // If it's a valid JSON metadata file
+        if (response.ok && response.headers.get("content-type")?.includes("json")) {
+            const data = await response.json();
             
-            // Look for the image inside the JSON (common keys: image, animation_url)
-            let imageUri = metadata.image || metadata.animation_url || metadata.video;
-            let finalImage = formatIpfsUrl(imageUri);
+            // 2. Extract the actual image link from the JSON
+            let imagePath = data.image || data.video || data.animation_url || url;
+            let finalImage = formatIpfsUrl(imagePath);
 
-            updateNftCard(card, finalImage, metadata.name || `Artifact ${serial}`);
+            // 3. Update the card with the real Name and Image
+            card.innerHTML = `
+                <img src="${finalImage}" class="nft-thumb" 
+                     onerror="this.src='https://via.placeholder.com/150?text=Image+Not+Found'">
+                <span class="nft-name">${data.name || card.querySelector('.nft-name').innerText}</span>
+            `;
         } else {
-            // If it's NOT JSON, the URL itself is likely the image (Direct Image NFT)
-            updateNftCard(card, url, `Artifact ${serial}`);
+            // If the URI itself is the image link (Direct Image NFT)
+            card.innerHTML = `
+                <img src="${url}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=Scan+Error'">
+                <span class="nft-name">${card.querySelector('.nft-name').innerText}</span>
+            `;
         }
     } catch (e) {
-        // If fetch fails (CORS error), we use a direct <img> tag fallback
-        // Browsers handle <img> tags differently than fetch()—they bypass most CORS rules!
-        updateNftCard(card, url, `Artifact ${serial}`);
+        // Fallback: If the fetch fails, just try to use the URL as a direct image
+        card.innerHTML = `
+            <img src="${url}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=No+Metadata'">
+            <span class="nft-name">${card.querySelector('.nft-name').innerText}</span>
+        `;
     }
 }
 
