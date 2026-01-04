@@ -269,7 +269,7 @@ async function searchWalletNFTs() {
 
             // Step-by-step loading
             await drillDownToImage(rawUri, cardId, nft.Sequence);
-            await delay(200); // Increased delay slightly for stability
+            await delay(300); // Increased delay slightly for stability
         }
     } catch (err) {
         grid.innerHTML = "<p>Vault Connection Error.</p>";
