@@ -253,7 +253,13 @@ async function searchWalletNFTs() {
         grid.innerHTML = "<p>Connection Error.</p>";
     }
 }
-
+function hexToText(hex) {
+    let str = '';
+    for (let i = 0; i < hex.length; i += 2) {
+        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    }
+    return str;
+}
 async function drillDownToImage(jsonUri, cardId, serial) {
     const card = document.getElementById(cardId);
     if (!jsonUri) return;
@@ -348,15 +354,6 @@ setInterval(() => {
         // Open Xaman to sign
         window.open(request.next.always, '_blank');
     }
-}
-// 1. Translates Ledger Hex into a readable IPFS link
-function hexToText(hex) {
-    if (!hex) return "";
-    let str = '';
-    for (let i = 0; i < hex.length; i += 2) {
-        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-    }
-    return str;
 }
 
 // 2. Cleans up the link so the browser can show the image
