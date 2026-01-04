@@ -76,48 +76,66 @@
             display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
             background:rgba(0,0,0,0.9); z-index:2000; align-items:center; justify-content:center;
         }
-            .nft-card {
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 12px;
-    padding: 10px;
-    border: 1px solid #1a2a44;
-    transition: 0.3s;
-    text-align: center;
-}
-.nft-card:hover { border-color: var(--accent-color); transform: translateY(-5px); }
+/* --- UPDATED NFT SECTION --- */
+        .nft-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
 
-.nft-thumb {
-    width: 100%;
-    aspect-ratio: 1/1; /* Keeps them perfectly square */
-    object-fit: cover; /* Crops image to fit without stretching */
-    border-radius: 8px;
-    margin-bottom: 10px;
-}
-.nft-name { 
-    font-weight: bold; 
-    font-size: 0.9em; 
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* Adds "..." if the name is too long */
-}
-.nft-meta { font-size: 0.75em; color: #888; }
-        /* Spinner for when the image is still being "scanned" */
-.nft-loader-spinner {
-    width: 30px;
-    height: 30px;
-    border: 3px solid rgba(255,255,255,0.1);
-    border-top: 3px solid var(--accent-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 20px auto;
-}
-@keyframes spin { 100% { transform: rotate(360deg); } }
+        .nft-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid rgba(0, 188, 212, 0.2);
+            transition: all 0.3s ease;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Centers spinner vertically */
+            min-height: 260px;       /* Keeps card size consistent while loading */
+            backdrop-filter: blur(5px);
+        }
 
-/* Make images fade in smoothly once loaded */
-.nft-thumb {
-    animation: fadeIn 0.5s ease-in-out;
-}
+        .nft-card:hover { 
+            border-color: var(--hover-color); 
+            transform: translateY(-5px);
+            box-shadow: var(--border-glow);
+        }
+
+        .nft-thumb {
+            width: 100%;
+            aspect-ratio: 1/1; 
+            object-fit: cover; 
+            border-radius: 8px;
+            margin-bottom: 10px;
+            animation: fadeIn 0.5s ease-in-out;
+            display: block;
+        }
+
+        .nft-name { 
+            font-weight: bold; 
+            font-size: 0.9em; 
+            color: var(--text-color);
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; 
+        }
+
+        .nft-loader-spinner {
+            width: 35px;
+            height: 35px;
+            border: 3px solid rgba(255,255,255,0.05);
+            border-top: 3px solid var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: auto; /* Perfectly centers in the flex card */
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
