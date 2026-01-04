@@ -266,7 +266,7 @@ async function searchWalletNFTs() {
 async function drillDownToImage(decodedUri, cardId, serial) {
     const card = document.getElementById(cardId);
     
-    // Step 3: Create the first web link (The Metadata Link)
+    // Step 3: Create the first web link (The Metadata JSON Link)
     const metadataWebLink = decodedUri.replace("ipfs://", "https://ipfs.io/ipfs/");
 
     try {
@@ -274,21 +274,37 @@ async function drillDownToImage(decodedUri, cardId, serial) {
         const response = await fetch(metadataWebLink);
         const json = await response.json();
         
-        // Step 5: Extract the Image (Priority Order)
-        // We skip 'schema' because it's usually just a technical blueprint
-        let rawImageLink = json.image || json.animation_url || json.video || "";
+        // Step 5: The "Google Sheets" Priority Logic
+        // We check Schema FIRST because you noted it's the most reliable for your collection
+        let rawImageLink = json.schema || json.image || json.animation_url || json.video || "";
         
-        // Step 6: Create the final image web link
-        const finalImageUrl = rawImageLink.replace("ipfs://", "https://ipfs.io/ipfs/");
+        // Safety Check: If the 'schema' is just a website URL and not an image, 
+        // we might need to skip it. But for now, we follow your working Sheet logic.
+        if (rawImageLink.startsWith("http") || rawImageLink.startsWith("ipfs://")) {
+             const finalImageUrl = rawImageLink.replace("ipfs://", "https://ipfs.io/ipfs/");
 
-        // Show it!
-        card.innerHTML = `
-            <img src="${finalImageUrl}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=Format+Error'">
-            <span class="nft-name">${json.name || 'Artifact #' + serial}</span>
-        `;
+             // Step 6: Load the image
+             const img = new Image();
+             img.src = finalImageUrl;
+             img.onload = () => {
+                 card.innerHTML = `
+                     <img src="${finalImageUrl}" class="nft-thumb">
+                     <span class="nft-name">${json.name || 'Artifact #' + serial}</span>
+                 `;
+             };
+             
+             img.onerror = () => {
+                 // If Schema was a dud (not an image), try the standard Image field as a backup
+                 const backupUrl = (json.image || "").replace("ipfs://", "https://ipfs.io/ipfs/");
+                 card.innerHTML = `
+                     <img src="${backupUrl}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=Format+Error'">
+                     <span class="nft-name">${json.name || 'Artifact #' + serial}</span>
+                 `;
+             };
+        }
         
     } catch (e) {
-        // Fallback: If we can't read the JSON, try to show the first link directly
+        // Fallback for CORB/Connection issues
         const fallback = decodedUri.replace("ipfs://", "https://ipfs.io/ipfs/");
         card.innerHTML = `
             <img src="${fallback}" class="nft-thumb" onerror="this.src='https://via.placeholder.com/150?text=Hidden+Artifact'">
@@ -296,6 +312,8 @@ async function drillDownToImage(decodedUri, cardId, serial) {
         `;
     }
 }
+
+    
    
     async function mintNFT() {
     // This is the transaction "recipe" for an NFT purchase/mint
